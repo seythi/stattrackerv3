@@ -1,0 +1,55 @@
+<div ng-controller='campaignController'>
+
+    <div id='primary'>
+	<div ng-bind="name"></div> 
+	<div ng-if="!pc || lock">
+	    <div class='loglabels'>
+		    Stat:<br>
+		    Max:
+	    </div>
+	    <form id="newstatform" class='logform'>
+			<input ng-model="$parent.label" type='text' name='title'><br>
+			<input ng-model="$parent.val" type='number' name='name'><br>
+			<button ng-click="addStat()">add new stat</button>
+		</form> 
+		<ul class='primstat'>
+	        	<li class='primentry' ng-repeat="prim in primaries">
+	        	<span ng-bind='prim.label'></span>
+	        	<span class="primcontrol">
+	        	<input type="number" ng-model="prim.val" ng-model-options="{debounce: 250}" ng-change="primupdate()">
+	        	<button ng-click="remprim($index)">delete</button></span>
+	        	</li>
+	        </ul> 
+	 </div>
+	<span ng-if="pc">Active</span><span ng-if="!pc">Locked</span>
+	<input type="checkbox" ng-model='lock' ng-change="toggleactive()"></input>
+	</div>
+	<div id='otherpcs'>
+		<div ng-if="pc">
+	    <ul>
+	        <li class='player' ng-repeat="player in players | filter:{active: true, name: '!' + name}" >
+		        <span ng-bind='player.name'></span>
+		        <ul>
+		        	<li class='playerstat' ng-repeat="stat in player.stats">
+		        	<span ng-bind='stat.label'></span>
+		        	<span ng-bind='stat.val'></span>
+		        	</li>
+		        </ul>
+	        </li>
+	    </ul> 
+	    </div>
+	    <div ng-if="!pc">
+	    <ul>
+	        <li class='player' ng-repeat="player in players | filter:{name: '!' + name}" >
+		        <span ng-bind='player.name'></span><button ng-click="remplayer($index)">delete</button>
+		        <ul ng-if="player.active">
+		        	<li class='playerstat' ng-repeat="stat in player.stats">
+		        	<span ng-bind='stat.label'></span>
+		        	<input type="number" ng-model="stat.val" ng-model-options="{debounce: 250}" ng-change="dmupdate($parent.$index)">
+		        	</li>
+		        </ul>
+	        </li>
+	    </ul> 
+	    </div>
+    </div>
+ </div>

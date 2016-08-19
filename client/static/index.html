@@ -1,0 +1,193 @@
+<html ng-app='myApp'>
+  <head>
+    <!-- <script src='https://ajax.googleapis.com/ajax/libs/angularjs/1.3.5/angular.min.js'></script> -->
+    <link type="text/css" rel="stylesheet" href="/client/static/stylesheet.css"></link>
+    <script type ="text/javascript" src="/bower_components/angular/angular.js"></script>
+    <script type ="text/javascript" src="/bower_components/angular-route/angular-route.js"></script>
+    <script type ="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type='text/javascript'>
+      var myAppModule = angular.module('myApp', ['ngRoute']);
+      var socket = io.connect();
+      myAppModule.config(function ($routeProvider) {
+      $routeProvider
+        .when('/',{
+            templateUrl: 'client/partials/loginpart.html',
+        })
+        .when('/view',{
+            templateUrl: 'client/partials/viewpart.html'
+        })
+        .otherwise({
+          redirectTo: '/'
+        });
+      });
+
+
+      // Create a factory (attached to this module)
+      myAppModule.factory('campaignFactory', function ($http){ //TODO proof of concept, deprecate
+          // The factory is nothing more than a function that returns an object
+          var players = []; //array of all players in active campaign
+          var primaries = []; //array of active player's stats (or dm's campaign stats)
+          var name = ""; //active user's name
+          var title = ""; //active campaign title
+          var factory = {};//empty factory object to return
+          var lock = false;//lock variable to connect campaign lock/player activity boolean to scope
+          var lts; //last timestamp used for patch of unresolved issue with listener firing twice for one addstat event
+          factory.ascribe = function (iname, ititle)
+          {
+            name = iname;
+            title = ititle;
+            console.log(iname + " " + ititle)
+          }
+          factory.describe = function (callback)
+          {
+            callback(name, title);
+          }
+          // Add a getStudents key to the factory object with a value of a function.
+          factory.getplayers = function (callback){
+              // Pass the students to a callback to be used by whoever calls the method
+              callback(primaries, players, lock);
+          };
+          factory.addStatP = function(socket, nm, ag){
+            primaries.push({label: nm, val: ag, cap: ag})
+            socket.emit('statadd',{label: nm, val: ag});
+          };
+          factory.addStat = function(owner, nm, ag, ts){
+            if(ts == lts)
+            {
+              console.log('response fired twice')
+            }
+            else{
+              lts = ts;
+              var playerindex = data.owner;
+              players[playerindex].stats.push({label: nm, val: ag, cap: ag});
+            } 
+          };
+          factory.updateStat = function(owner, stats){
+            var playerindex = -1;
+            pfinder: for(var foo = 0; foo < players.length; foo++)
+            {
+              if(players[foo].name == owner)
+              {
+                playerindex = foo;
+                break pfinder;
+              }
+            }
+            players[playerindex].stats = stats;
+          };
+          factory.populate = function(data)
+          {
+            players = data.players;
+            
+            if(data.dm == true)
+            {
+              primaries = data.cstats;
+              lock = data.lock;
+            }
+            else
+            {
+              var playerindex = data.owner;
+              primaries = players[playerindex].stats; 
+              lock = players[playerindex].active;
+            }
+          }
+          // Most important step: return the object so it can be used by the rest of our angular code
+          return factory;
+      });
+
+      myAppModule.controller('loginController', ['$scope', '$location', 'campaignFactory', function ($scope, $location, campaignFactory){
+          $scope.login = function(){
+            socket.emit('loginattempt', {title: $scope.title, name: $scope.name, code: $scope.code});
+            
+          };
+          $scope.register = function(){
+            socket.emit('registerattempt', {title: $scope.title, name: $scope.name, code: $scope.code})
+            
+          };
+          socket.on('result', function(data){
+              if(data.success)
+              {
+                campaignFactory.ascribe(data.name, data.title);
+                $scope.$apply(function () {
+                   $location.path(data.path);
+                })
+
+              }
+              else 
+              {
+                $scope.error = data.error;
+                $scope.$apply();
+              }
+            });
+      }]);
+      // Create a controller (attached to this module), and inject the campaignFactory in it.
+      myAppModule.controller('campaignController', ['$scope', '$location', 'campaignFactory', function ($scope, $location, campaignFactory){
+          //  initialize an empty array so $scope.students maintains a consistent data type
+          $scope.students = [];
+          campaignFactory.describe(function(n, t){
+            $scope.name = n;
+            $scope.title = t;
+            $scope.pc = (n != 'Campaign Stats');
+          })
+          socket.emit("loggedin"); //start dbINIT
+          socket.on("reloader", function(){
+            socket.emit("loggedin");
+          })
+          socket.on("fail", function(){
+            $scope.$apply(function () {
+                   $location.path('/');
+                })
+          })
+          $scope.addStat = function()
+          {
+            campaignFactory.addStatP(socket, $scope.label, $scope.val);
+            updateScope();
+          }
+          $scope.getstats = function(player)
+          {
+            return player.stats;
+          }
+          socket.on("dbINIT", function(data){
+            campaignFactory.populate(data);
+            updateScope();
+            $scope.$apply();
+          });
+          socket.on("otheradded", function(data){
+            campaignFactory.addStat(data.owner, data.label, data.val, data.timestamp);
+            updateScope();
+            $scope.$apply();
+          });
+          updateScope();
+          // run the getStudents method and set $scope data in the callback
+          $scope.rescope = function(){updateScope();}
+          function updateScope(){
+            campaignFactory.getplayers(function (primaries, players, lock){
+              $scope.players = players;
+              $scope.primaries = primaries;
+              $scope.lock = lock;
+          });
+          }
+          $scope.primupdate = function(){
+            console.log('firing primupdate');
+            statupdate();
+          }
+          $scope.remprim = function(id){
+            $scope.primaries.splice(id, 1);
+            statupdate();
+          }
+          function statupdate(){socket.emit('statupdate', {stats: $scope.primaries})}
+          $scope.dmupdate = function(ind){socket.emit('dmupdate', {player: ind, stats: $scope.players[ind].stats})}
+          $scope.remplayer = function(ind){socket.emit('dmupdate', {player: ind, toggle: true});}
+          $scope.toggleactive = function(){socket.emit('statupdate', {toggle: true})}
+          socket.on("otherupdated", function(data){
+            campaignFactory.updateStat(data.owner, data.stats);
+            updateScope();
+            $scope.$apply();
+          })
+      }])
+    </script>
+  </head>
+<body>
+
+<div ng-view=""></div>
+</body>
+</html>

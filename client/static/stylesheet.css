@@ -1,0 +1,44 @@
+#otherpcs, #primary {
+	vertical-align: top;
+}
+#primary {
+	box-sizing: border-box;
+	border-bottom: 2px solid black; /*break just swaps this to bottom border*/
+	padding-left:7%;
+	padding-bottom: 1em;
+}
+.primentry{
+	position: relative;
+}
+.player{
+	list-style-type: none;
+	border:1px solid black;
+	padding:1em;
+	width:auto;
+}
+.primcontrol{
+	position:absolute;
+	left:100px;
+}
+.primstat li{
+	height:2em;
+}
+.loglabels{
+	vertical-align: top;
+	text-align: right;
+	display: inline-block;
+}
+.logform{
+display: inline-block;
+}
+@media only screen and (min-width: 900px){
+	#primary, #otherpcs{
+		display: inline-block;
+		width: 49%;
+	}
+	#primary{
+		border-right: 2px solid black;
+		border-bottom: 0;
+		height: 100%;
+	}
+}

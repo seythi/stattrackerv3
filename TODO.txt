@@ -1,0 +1,7 @@
+
+add collapseable to each pc
+decide on how cap system should work, implement
+
+
+NEXT ITERATION
+	give dm edit permission on all players, view of deactivated, able to deactivate/delete players

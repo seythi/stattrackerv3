@@ -1,0 +1,17 @@
+<div ng-controller="loginController">
+	<div class='loglabels'>
+	Campaign:<br>
+	PC name:<br>
+	Code:
+	</div>
+	<form class='logform'>
+	<input ng-model="title" type='text' name='title'><br>
+	<input ng-model="name" type='text' name='name'><br>
+	<input ng-model="code" type='text' name='code'><br>
+	
+	</form><br>
+	<button ng-click="login()">Log In</button>
+	<button ng-click="register()">Create Campaign / Create Character</button>
+	<div ng-bind="error"></div>
+	<div ng-bind="socketattr"></div>
+</div>
